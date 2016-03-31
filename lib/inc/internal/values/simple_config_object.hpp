@@ -8,7 +8,9 @@ namespace hocon {
     class simple_config_object : public config_object {
     public:
         simple_config_object(shared_origin origin, std::unordered_map<std::string, shared_value> value,
-                             resolve_status status = resolve_status::RESOLVED, bool ignores_fallbacks = false);
+                             resolve_status status, bool ignores_fallbacks);
+
+        simple_config_object(shared_origin origin, std::unordered_map<std::string, shared_value> value);
 
         shared_value attempt_peek_with_partial_resolve(std::string const& key) const override;
 
@@ -44,6 +46,8 @@ namespace hocon {
 
         std::shared_ptr<simple_config_object> modify(no_exceptions_modifier& modifier) const;
         std::shared_ptr<simple_config_object> modify_may_throw(modifier& modifier) const;
+
+        static resolve_status resolve_status_from_value(const std::unordered_map<std::string, shared_value>& value);
 
         struct resolve_modifier;
     };

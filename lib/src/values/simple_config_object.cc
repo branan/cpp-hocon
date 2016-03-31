@@ -7,6 +7,8 @@
 #include <internal/resolve_result.hpp>
 #include <internal/container.hpp>
 
+#include <algorithm>
+
 using namespace std;
 
 namespace hocon {
@@ -31,6 +33,16 @@ namespace hocon {
                                                resolve_status status, bool ignores_fallbacks) :
         config_object(move(origin)), _value(move(value)), _resolved(status), _ignores_fallbacks(ignores_fallbacks)
     {}
+
+    simple_config_object::simple_config_object(shared_origin origin,
+                                               unordered_map <std::string, shared_value> value)
+         : config_object(move(origin)) {
+        // These are in the body so I can call resolve_from_status
+        // then move the value hash in a well-defined order.
+        _resolved = resolve_status_from_value(value);
+        _value = move(value);
+        _ignores_fallbacks = false;
+    }
 
     shared_value simple_config_object::attempt_peek_with_partial_resolve(std::string const& key) const {
         return _value.at(key);
@@ -86,7 +98,7 @@ namespace hocon {
                 }
             }
             // TODO: the last argument is incorrect, fix when implementing resolve functionality
-            return make_shared<simple_config_object>(origin(), smaller, resolve_status::RESOLVED);
+            return make_shared<simple_config_object>(origin(), smaller);
         }
     }
 
@@ -167,6 +179,13 @@ namespace hocon {
     {
         // TODO: implement
         throw config_exception("simple_config_object::modify_may_throw not implemented");
+    }
+
+    resolve_status simple_config_object::resolve_status_from_value(const unordered_map<string, shared_value>& value) {
+        using pair = unordered_map<string, shared_value>::value_type;
+        return any_of(value.begin(), value.end(), [](const pair& value) {
+                 return value.second->get_resolve_status() == resolve_status::UNRESOLVED;
+             }) ? resolve_status::UNRESOLVED : resolve_status::RESOLVED;
     }
 
 }  // namespace hocon
