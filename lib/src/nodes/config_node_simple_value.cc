@@ -1,8 +1,11 @@
 #include <internal/nodes/config_node_simple_value.hpp>
 #include <hocon/config_exception.hpp>
 #include <internal/path_parser.hpp>
+#include <internal/tokenizer.hpp>
 #include <internal/tokens.hpp>
+#include <internal/values/config_reference.hpp>
 #include <internal/values/config_string.hpp>
+#include <internal/substitution_expression.hpp>
 
 using namespace std;
 
@@ -30,10 +33,11 @@ namespace hocon {
 
         if (auto sub_token = dynamic_pointer_cast<const substitution>(_token)) {
             token_list expression = sub_token->expression();
-            auto the_path = path_parser::parse_path_expression(expression.begin(), expression.end(), sub_token->origin());
+            iterator_wrapper<token_list::iterator> wrapper(expression.begin(), expression.end());
+            auto the_path = path_parser::parse_path_expression(wrapper, sub_token->origin());
             bool optional = sub_token->optional();
 
-            return make_shared<config_reference>(sub_token->origin(), make_shared<substitution_expression>(path, optional));
+            return make_shared<config_reference>(sub_token->origin(), make_shared<substitution_expression>(the_path, optional));
         }
 
         throw config_exception("Tried to get a config value from a non-value token.");
